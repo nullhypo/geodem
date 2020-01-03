@@ -13,6 +13,7 @@ class Features:
         mdir = path + '/data/metadata/' + self.project_id  # feature categorisation metadata file
         idir = path + '/data/inputs/' + self.project_id  # features input file path
         odir = path + '/data/features/' + self.project_id  # features output path
+        dodir = path + '/data/discrimination_features/' + self.project_id  # features output path
         lohdir = path + '/data/log_odds_histograms/' + self.project_id
 
         pp = PdfPages(lohdir + '/log_odds_histograms.pdf')  # open model_outputs pdf for writing
@@ -46,6 +47,16 @@ class Features:
             # calculate cumulative proportions of maximum for each level
             df = pd.merge(df, mx, how='inner', left_on=['oa11'], right_on=['oa11'])
             df['cuml_prop'] = (df['cuml'] + (df['order'] / ng)) / (df['max'] + 1)
+
+            discrim_flag = df['discrimination_feature'].unique()[0]
+            print(input_feature)
+            print(discrim_flag)
+            if discrim_flag == 1:
+
+                dfd = df.copy()
+                dfd[input_feature] = dfd['cuml_prop']
+                dfd = dfd[['oa11', input_feature]]
+                dfd.to_csv(dodir + '/' + input_feature + '.csv', index=False)
 
             # calculate log odds for the splitting level and write as csv to feature output directory
             df = df[df['order'] == ln]

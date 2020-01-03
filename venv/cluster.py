@@ -1,246 +1,255 @@
 from setup import *
-project_id = 'P1'
 
-adir = path + '/data/axis/' + project_id
-oadir = path + '/data/spines/oa11'
-cdir = path + '/data/clustering/' + project_id
 
-colour = ['blue','red','yellow','cyan','magenta','green','brown','gold','lawngreen','pink','gray','orange','indigo','salmon','chocolate',
-           'khaki','deepskyblue','lime','royalblue','wheat','deeppink','plum','olivedrab','teal','tomato','turquoise','rosybrown']
+class Cluster:
 
-pp = PdfPages(cdir + '/clustering.pdf')  # open model_outputs pdf for writing
+    def __init__(self, project_id, init_mode):
 
-grid = pd.read_csv(oadir + '/oa11_spine.csv')
+        self.project_id = project_id
+        self.init_mode = init_mode
 
-files = os.listdir(adir)
-for f in files:
-    a = pd.read_csv(adir + '/' + f)
-    grid = pd.merge(a, grid, how='inner', left_on=['oa11'], right_on=['oa11'])  # join axis to oa spine
+        oadir = path + '/data/spines/oa11'  # oa spine path
+        adir = path + '/data/axis/' + self.project_id
+        cdir = path + '/data/clustering/' + self.project_id
+        nadir = path + '/data/initial_nodes/' + self.project_id
+        colour = ['blue','red','yellow','cyan','magenta','green','brown','gold','lawngreen','pink','gray','orange','indigo','salmon','chocolate',
+                   'khaki','deepskyblue','lime','royalblue','wheat','deeppink','plum','olivedrab','teal','tomato','turquoise','rosybrown']
 
-# get oa11 index and delete oa11 from grid for use as array and oa11 stored against index
-oa11 = pd.DataFrame(grid['oa11'], columns=['oa11'])
-grid.drop(columns=['oa11'], inplace=True)
-grid_array = np.array(grid)
-grid_array_z = np.array(ss.zscore(grid_array))
+        pp = PdfPages(cdir + '/clustering.pdf')  # open model_outputs pdf for writing
 
-#k-means class arguments
-clusdf = grid_array_z
-n_init = 1
-max_iter = 100000
-n_clusters = 27
-init = [
- [-1,-1,-1]
-,[-1,-1,0]
-,[-1,-1,1]
-,[-1,0,-1]
-,[-1,0,0]
-,[-1,0,1]
-,[-1,1,-1]
-,[-1,1,0]
-,[-1,1,1]
-,[0,-1,-1]
-,[0,-1,0]
-,[0,-1,1]
-,[0,0,-1]
-,[0,0,0]
-,[0,0,1]
-,[0,1,-1]
-,[0,1,0]
-,[0,1,1]
-,[1,-1,-1]
-,[1,-1,0]
-,[1,-1,1]
-,[1,0,-1]
-,[1,0,0]
-,[1,0,1]
-,[1,1,-1]
-,[1,1,0]
-,[1,1,1]
-]
-init = np.array(init)
+        grid = pd.read_csv(oadir + '/oa11_spine.csv')
 
-# assign each oa11 to nearest initial node (nearest neaighbour lookup)
-nearest_node = np.zeros((len(grid_array_z), 4))
-nearest_node[:, :-1] = grid_array_z
+        files = os.listdir(adir)
+        for f in files:
+            a = pd.read_csv(adir + '/' + f)
+            grid = pd.merge(a, grid, how='inner', left_on=['oa11'], right_on=['oa11'])  # join axis to oa spine
 
-for row in range(len(nearest_node)):
-    pt = nearest_node[row, [0, 1, 2]]
-    dist, ind = spatial.KDTree(init).query(pt)
-    nearest_node[row, 3] = ind
+        # get oa11 index and delete oa11 from grid for use as array and oa11 stored against index
+        oa11 = pd.DataFrame(grid['oa11'], columns=['oa11'])
+        grid.drop(columns=['oa11'], inplace=True)
+        grid_array = np.array(grid)
+        grid_array_z = np.array(ss.zscore(grid_array))
 
-# frequency of initial node allocations
-plt.hist(nearest_node[:, 3], bins=n_clusters)
-plt.title("""project_id = """ + project_id + """ : nearest node assignments : cluster nodes = """ + str(n_clusters),
-          fontsize=8)
-plt.xlabel('node')
-plt.ylabel('frequency')
-pp.savefig()
 
-# dataframe of initial node allocations
-nearest_node = pd.DataFrame(nearest_node[:, 3], columns=['nearestnode'])
+        #k-means class arguments
+        clusdf = grid_array_z
+        n_init = 1
+        max_iter = 100000
+        n_clusters = 27
+        init = [
+         [-1,-1,-1]
+        ,[-1,-1,0]
+        ,[-1,-1,1]
+        ,[-1,0,-1]
+        ,[-1,0,0]
+        ,[-1,0,1]
+        ,[-1,1,-1]
+        ,[-1,1,0]
+        ,[-1,1,1]
+        ,[0,-1,-1]
+        ,[0,-1,0]
+        ,[0,-1,1]
+        ,[0,0,-1]
+        ,[0,0,0]
+        ,[0,0,1]
+        ,[0,1,-1]
+        ,[0,1,0]
+        ,[0,1,1]
+        ,[1,-1,-1]
+        ,[1,-1,0]
+        ,[1,-1,1]
+        ,[1,0,-1]
+        ,[1,0,0]
+        ,[1,0,1]
+        ,[1,1,-1]
+        ,[1,1,0]
+        ,[1,1,1]
+        ]
+        init = np.array(init)
 
-# k-means algoritm class instantiation
-kmeans = cl.KMeans(n_clusters=n_clusters, init=init, n_init=n_init, max_iter=max_iter)
+        if self.init_mode == 'specified':
+            initial_nodes = pd.read_csv(nadir + '/initial_nodes.csv')
+            gazd = pd.DataFrame(grid_array_z, columns=(['A0', 'A1', 'A2']))
+            init_nodes = pd.merge(oa11, gazd, left_index=True, right_index=True)
+            init_nodes = pd.merge(initial_nodes, init_nodes, how='inner', left_on=['oa11'], right_on=['oa11'])
+            init_nodes.drop(columns=['oa11'], inplace=True)
+            init_nodes = np.array(init_nodes)
+            print(init_nodes)
+            init = init_nodes
 
-# fit model and output nodes
-nodes = kmeans.fit_predict(clusdf)
+        # assign each oa11 to nearest initial node (nearest neighbour lookup)
+        nearest_node = np.zeros((len(grid_array_z), 4))
+        nearest_node[:, :-1] = grid_array_z
 
-# entropy
-nodes_freq = (ss.stats.itemfreq(nodes))[:, 1]
-entropy = (nodes_freq * np.log(nodes_freq)).sum()
-entropy
+        for row in range(len(nearest_node)):
+            pt = nearest_node[row, [0, 1, 2]]
+            dist, ind = spatial.KDTree(init).query(pt)
+            nearest_node[row, 3] = ind
 
-# plot node frequencies
-fig = plt.figure()
-plt.hist(nodes, bins=n_clusters)
-plt.title("""project_id = """ + project_id + """ : cluster nodes = """ + str(n_clusters) + """ : iterations = """ + str(
-    max_iter) + """ : entropy = """ + str(int(entropy)), fontsize=8)
-plt.xlabel('node')
-plt.ylabel('frequency')
-pp.savefig()
+        # frequency of initial node allocations
+        plt.hist(nearest_node[:, 3], bins=n_clusters)
+        plt.title("""project_id = """ + self.project_id + """ : nearest node assignments : cluster nodes = """ + str(n_clusters),
+                  fontsize=8)
+        plt.xlabel('node')
+        plt.ylabel('frequency')
+        pp.savefig()
 
-# cluster centres
-cluscentres = kmeans.cluster_centers_
+        # dataframe of initial node allocations
+        nearest_node = pd.DataFrame(nearest_node[:, 3], columns=['nearestnode'])
 
-mds = md.MDS(n_components=2, metric=True, n_init=4, max_iter=300, verbose=0, eps=0.001, n_jobs=1, random_state=161,
-             dissimilarity="euclidean")
+        # k-means algoritm class instantiation
+        kmeans = cl.KMeans(n_clusters=n_clusters, init=init, n_init=n_init, max_iter=max_iter)
 
-mdsc = mds.fit_transform(cluscentres)
+        # fit model and output nodes
+        nodes = kmeans.fit_predict(clusdf)
 
-labels = [i for i in range(len(mdsc))]
-fig = plt.figure()
-plt.scatter(mdsc[:, 0], mdsc[:, 1], c='b', cmap=plt.cm.Spectral)
-for i in range(len(mdsc)):
-    xy = (mdsc[i][0], mdsc[i][1])
-    plt.annotate(labels[i], xy)
-plt.title("""project_id = """ + project_id + """ : "2-D multidimensional scaling of 3-D axis : clusters = """ + str(
-    n_clusters) + """ : iterations = """ + str(max_iter) + """ : entropy = """ + str(int(entropy)), fontsize=8)
-plt.xlabel('reduced dimension 1')
-plt.ylabel('reduced dimension 2')
-pp.savefig()
+        # entropy
+        nodes_freq = (ss.stats.itemfreq(nodes))[:, 1]
+        entropy = (nodes_freq * np.log(nodes_freq)).sum()
 
-# cluster centres dataframe
-cluscentres = pd.DataFrame(cluscentres)
-cluscentres
+        # plot node frequencies
+        fig = plt.figure()
+        plt.hist(nodes, bins=n_clusters)
+        plt.title("""project_id = """ + self.project_id + """ : cluster nodes = """ + str(n_clusters) + """ : iterations = """ + str(
+            max_iter) + """ : entropy = """ + str(int(entropy)), fontsize=8)
+        plt.xlabel('node')
+        plt.ylabel('frequency')
+        pp.savefig()
 
-# get cluster centres next to initialisation nodes
-initialisations = pd.DataFrame(init)
-cluscentres = pd.merge(initialisations, cluscentres, left_index=True, right_index=True)
-cluscentres
+        # cluster centres
+        cluscentres = kmeans.cluster_centers_
 
-# write initial nodes and final nodes to pdf
-fig, ax = plt.subplots()
-ax.axis('off')
-ax.axis('tight')
-(ax.table(cellText=cluscentres.values.round(2), colLabels=cluscentres.columns, loc='center', fontsize=6,
-          colWidths=[0.05, 0.05, 0.05, 0.05, 0.05, 0.05])).scale(0.75, 0.75)
-# fig.tight_layout()
-pp.savefig()
+        mds = md.MDS(n_components=2, metric=True, n_init=4, max_iter=300, verbose=0, eps=0.001, n_jobs=1, random_state=161,
+                     dissimilarity="euclidean")
 
-# index nodes assignments
-cluslabels = kmeans.labels_
-cluslabels = pd.DataFrame(cluslabels, columns=['initialCluster'])
-cluslabels
+        mdsc = mds.fit_transform(cluscentres)
 
-# join oa11 to nodes assignent on index
-np.testing.assert_array_equal(oa11['oa11'].count(), cluslabels['initialCluster'].count(),
-                              nearest_node['nearestnode'].count())
-node_assignments = pd.merge(oa11, cluslabels, left_index=True, right_index=True)
-node_assignments = pd.merge(node_assignments, nearest_node, left_index=True, right_index=True)
-node_assignments['project_id'] = project_id
-node_assignments
+        labels = [i for i in range(len(mdsc))]
+        fig = plt.figure()
+        plt.scatter(mdsc[:, 0], mdsc[:, 1], c='b', cmap=plt.cm.Spectral)
+        for i in range(len(mdsc)):
+            xy = (mdsc[i][0], mdsc[i][1])
+            plt.annotate(labels[i], xy)
+        plt.title("""project_id = """ + self.project_id + """ : "2-D multidimensional scaling of 3-D axis : clusters = """ + str(
+            n_clusters) + """ : iterations = """ + str(max_iter) + """ : entropy = """ + str(int(entropy)), fontsize=8)
+        plt.xlabel('reduced dimension 1')
+        plt.ylabel('reduced dimension 2')
+        pp.savefig()
 
-# node frequencies
-node_frequencies = pd.DataFrame(node_assignments.groupby(['initialCluster'])['oa11'].count())
+        # cluster centres dataframe
+        cluscentres = pd.DataFrame(cluscentres)
 
-from pandasql import sqldf
-pysqldf = lambda q: sqldf(q, globals())
+        # get cluster centres next to initialisation nodes
+        initialisations = pd.DataFrame(init)
+        cluscentres = pd.merge(initialisations, cluscentres, left_index=True, right_index=True)
 
-# output node assignments and axis
-cluscentres['cluster'] = cluscentres.index
-node_assignments_nodes = pysqldf("""
-    select   nas.oa11
-            ,nas.initialCluster
-            ,cls.[0_y] as axis0
-            ,cls.[1_y] as axis1
-            ,cls.[2_y] as axis2
-    from node_assignments nas
-    inner join cluscentres cls
-    on nas.initialCluster = cls.cluster
-    ;
-    """)
+        # write initial nodes and final nodes to pdf
+        fig, ax = plt.subplots()
+        ax.axis('off')
+        ax.axis('tight')
+        (ax.table(cellText=cluscentres.values.round(2), colLabels=cluscentres.columns, loc='center', fontsize=6,
+                  colWidths=[0.05, 0.05, 0.05, 0.05, 0.05, 0.05])).scale(0.75, 0.75)
+        # fig.tight_layout()
+        pp.savefig()
 
-# 3-D scatter of initial and final nodes
-fig = figure()
-ax = Axes3D(fig)
+        # index nodes assignments
+        cluslabels = kmeans.labels_
+        cluslabels = pd.DataFrame(cluslabels, columns=['initialCluster'])
 
-for i in range(len(cluscentres)):  # plot each point + it's index as text above
-    ax.scatter(cluscentres['0_x'][i], cluscentres['1_x'][i], cluscentres['2_x'][i], color='b')
-    ax.text(cluscentres['0_x'][i], cluscentres['1_x'][i], cluscentres['2_x'][i], '%s' % (str(i)), size=10, zorder=1,
-            color='k')
+        # join oa11 to nodes assignment on index
+        np.testing.assert_array_equal(oa11['oa11'].count(), cluslabels['initialCluster'].count(),
+                                      nearest_node['nearestnode'].count())
+        node_assignments = pd.merge(oa11, cluslabels, left_index=True, right_index=True)
+        node_assignments = pd.merge(node_assignments, nearest_node, left_index=True, right_index=True)
+        node_assignments['project_id'] = self.project_id
+        print(node_assignments)
 
-ax.set_xlabel('Ax1')
-ax.set_ylabel('Ax2')
-ax.set_zlabel('Ax3')
+        # node frequencies
+        node_frequencies = pd.DataFrame(node_assignments.groupby(['initialCluster'])['oa11'].count())
 
-plt.title("""project_id = """ + project_id + """ : initial nodes""")
+        from pandasql import sqldf
+        pysqldf = lambda q: sqldf(q, globals())
 
-pp.savefig()
+        # output node assignments and axis
+        cluscentres['cluster'] = cluscentres.index
+        node_assignments_nodes = node_assignments.copy()
+        node_assignments_nodes = pd.merge(node_assignments_nodes, cluscentres, how='inner', left_on=['initialCluster'], right_on=['cluster'])
+        node_assignments_nodes['axis0'] = node_assignments_nodes['0_y']
+        node_assignments_nodes['axis1'] = node_assignments_nodes['1_y']
+        node_assignments_nodes['axis2'] = node_assignments_nodes['2_y']
+        node_assignments_nodes = node_assignments_nodes[['oa11', 'initialCluster', 'axis0', 'axis1', 'axis2']]
 
-fig = figure()
-ax = Axes3D(fig)
+        # 3-D scatter of initial and final nodes
+        fig = figure()
+        ax = Axes3D(fig)
 
-for i in range(len(cluscentres)):  # plot each point + it's index as text above
-    ax.scatter(cluscentres['0_y'][i], cluscentres['1_y'][i], cluscentres['2_y'][i], color='b')
-    ax.text(cluscentres['0_y'][i], cluscentres['1_y'][i], cluscentres['2_y'][i], '%s' % (str(i)), size=10, zorder=1,
-            color='k')
+        for i in range(len(cluscentres)):  # plot each point + it's index as text above
+            ax.scatter(cluscentres['0_x'][i], cluscentres['1_x'][i], cluscentres['2_x'][i], color='b')
+            ax.text(cluscentres['0_x'][i], cluscentres['1_x'][i], cluscentres['2_x'][i], '%s' % (str(i)), size=10, zorder=1,
+                    color='k')
 
-ax.set_xlabel('Ax1')
-ax.set_ylabel('Ax2')
-ax.set_zlabel('Ax3')
+        ax.set_xlabel('Ax1')
+        ax.set_ylabel('Ax2')
+        ax.set_zlabel('Ax3')
 
-plt.title("""project_id = """ + project_id + """ : cluster nodes = """ + str(n_clusters) + """ : iterations = """ + str(
-    max_iter) + """ : entropy = """ + str(int(entropy)), fontsize=8)
+        plt.title("""project_id = """ + self.project_id + """ : initial nodes""")
 
-pp.savefig()
+        pp.savefig()
 
-# add cluster labels to z space scatter and sample with replacement
-grid_array_z_cluster = pd.DataFrame(grid_array_z)
-grid_array_z_cluster = pd.merge(grid_array_z_cluster, cluslabels, left_index=True, right_index=True)
-grid_array_z_cluster = np.array(grid_array_z_cluster)
-grid_array_z_cluster = grid_array_z_cluster[np.random.randint(grid_array_z_cluster.shape[0], size=10000), :]
+        fig = figure()
+        ax = Axes3D(fig)
 
-# 3-D scatter of sample of oa11 allocated to parent cluster
-fig = figure()
-ax = Axes3D(fig)
+        for i in range(len(cluscentres)):  # plot each point + it's index as text above
+            ax.scatter(cluscentres['0_y'][i], cluscentres['1_y'][i], cluscentres['2_y'][i], color='b')
+            ax.text(cluscentres['0_y'][i], cluscentres['1_y'][i], cluscentres['2_y'][i], '%s' % (str(i)), size=10, zorder=1,
+                    color='k')
 
-for i in range(len(grid_array_z_cluster)):  # plot each point + it's index as text above
-    ax.scatter(grid_array_z_cluster[i][0], grid_array_z_cluster[i][1], grid_array_z_cluster[i][2],
-               color=colour[int(grid_array_z_cluster[i][3])])
+        ax.set_xlabel('Ax1')
+        ax.set_ylabel('Ax2')
+        ax.set_zlabel('Ax3')
 
-ax.set_xlabel('Ax1')
-ax.set_ylabel('Ax2')
-ax.set_zlabel('Ax3')
+        plt.title("""project_id = """ + self.project_id + """ : cluster nodes = """ + str(n_clusters) + """ : iterations = """ + str(
+            max_iter) + """ : entropy = """ + str(int(entropy)), fontsize=8)
 
-plt.title("""project_id = """ + project_id + """ : points in z axis space by cluster""")
+        pp.savefig()
 
-pp.savefig()
+        # add cluster labels to z space scatter and sample with replacement
+        grid_array_z_cluster = pd.DataFrame(grid_array_z)
+        grid_array_z_cluster = pd.merge(grid_array_z_cluster, cluslabels, left_index=True, right_index=True)
+        grid_array_z_cluster = np.array(grid_array_z_cluster)
+        grid_array_z_cluster = grid_array_z_cluster[np.random.randint(grid_array_z_cluster.shape[0], size=10000), :]
 
-# 3-D scatter of sample of oa11 allocated to parent cluster
-fig = figure()
-ax = Axes3D(fig)
+        # 3-D scatter of sample of oa11 allocated to parent cluster
+        fig = figure()
+        ax = Axes3D(fig)
 
-for i in range(len(grid_array_z_cluster)):  # plot each point + it's index as text above
-    ax.scatter(grid_array_z_cluster[i][0], grid_array_z_cluster[i][1], grid_array_z_cluster[i][2],
-               color=colour[int(grid_array_z_cluster[i][3])], alpha=0.2)
+        for i in range(len(grid_array_z_cluster)):  # plot each point + it's index as text above
+            ax.scatter(grid_array_z_cluster[i][0], grid_array_z_cluster[i][1], grid_array_z_cluster[i][2],
+                       color=colour[int(grid_array_z_cluster[i][3])])
 
-ax.set_xlabel('Ax1')
-ax.set_ylabel('Ax2')
-ax.set_zlabel('Ax3')
+        ax.set_xlabel('Ax1')
+        ax.set_ylabel('Ax2')
+        ax.set_zlabel('Ax3')
 
-plt.title("""project_id = """ + project_id + """ : points in z axis space by cluster""")
+        plt.title("""project_id = """ + self.project_id + """ : points in z axis space by cluster""")
 
-pp.savefig()
+        pp.savefig()
 
-pp.close()
+        # 3-D scatter of sample of oa11 allocated to parent cluster
+        fig = figure()
+        ax = Axes3D(fig)
+
+        for i in range(len(grid_array_z_cluster)):  # plot each point + it's index as text above
+            ax.scatter(grid_array_z_cluster[i][0], grid_array_z_cluster[i][1], grid_array_z_cluster[i][2],
+                       color=colour[int(grid_array_z_cluster[i][3])], alpha=0.2)
+
+        ax.set_xlabel('Ax1')
+        ax.set_ylabel('Ax2')
+        ax.set_zlabel('Ax3')
+
+        plt.title("""project_id = """ + self.project_id + """ : points in z axis space by cluster""")
+
+        pp.savefig()
+
+        pp.close()
 
