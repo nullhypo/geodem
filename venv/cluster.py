@@ -259,17 +259,22 @@ class Cluster:
         dc = pd.read_csv(dodir + '/' + input_feature + '.csv')
         ng = dc['order'].nunique()
         gini_grid_income = pd.merge(dc, node_assignments, how='inner', left_on=['oa11'], right_on=['oa11'])
+
+        tot = gini_grid_income.groupby(['order']).agg({'metric': ['sum']}).reset_index()
+        tot.columns = ["_".join(x) for x in tot.columns.ravel()]
+        tot['order'] = tot['order_']
+        tot['metric_tot'] = tot['metric_sum']
+        tot = tot[['order', 'metric_tot']]
+
         gini_grid_income = gini_grid_income.groupby(['initialCluster', 'order']).agg({'metric': ['sum']}).reset_index()
         gini_grid_income.columns = ["_".join(x) for x in gini_grid_income.columns.ravel()]
         gini_grid_income['initialCluster'] = gini_grid_income['initialCluster_']
         gini_grid_income['order'] = gini_grid_income['order_']
-        gini_grid_income = gini_grid_income.sort_values(['initialCluster', 'order'], ascending=[True, True])
-        gini_grid_income['cuml'] = gini_grid_income.groupby(['initialCluster'])['metric_sum'].apply(lambda x: x.cumsum())
-        mx = (gini_grid_income.groupby(['initialCluster']).agg(max=('cuml', 'max'))).reset_index()
-        # calculate cumulative proportions of maximum for each level
-        gini_grid_income = pd.merge(gini_grid_income, mx, how='inner', left_on=['initialCluster'], right_on=['initialCluster'])
-        gini_grid_income['cuml_prop'] = (gini_grid_income['cuml'] + (gini_grid_income['order'] / ng)) / (gini_grid_income['max'] + 1)
-        gini_grid_income = (gini_grid_income.pivot(index='initialCluster', columns='order', values='cuml_prop')).reset_index()
+
+        gini_grid_income = pd.merge(gini_grid_income, tot, how='inner', left_on=['order'],right_on=['order'])
+        gini_grid_income['metric_sum'] = gini_grid_income['metric_sum'] / gini_grid_income['metric_tot']
+
+        gini_grid_income = (gini_grid_income.pivot(index='initialCluster', columns='order', values='metric_sum')).reset_index()
 
 
 
