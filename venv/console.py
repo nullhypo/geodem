@@ -8,6 +8,6 @@ init_mode = 'default'
 
 #InputSummaries(project_id)
 #Features(project_id)
-#Axis(project_id)
-Cluster(project_id, init_mode)
+Axis(project_id)
+#Cluster(project_id, init_mode)
 
