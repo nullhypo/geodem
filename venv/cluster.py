@@ -4,9 +4,11 @@ from setup import *
 class Cluster:
 
     def __init__(self, project_id, init_mode):
+        """k-means cluster the axes (cold and warm start methods). Measure entropy and discrimination of converged
+        solution. Plot centroids, boundaries and multi-dimensional scaling views and produce node to oa allocations"""
 
         self.project_id = project_id
-        self.init_mode = init_mode
+        self.init_mode = init_mode  # warm start oa's
 
         oadir = path + '/data/spines/oa11'  # oa spine path
         adir = path + '/data/axis/' + self.project_id
@@ -73,6 +75,7 @@ class Cluster:
         ]
         init = np.array(init)
 
+        # if warm start is specified use the 27 oa's as seed nodes
         if self.init_mode == 'specified':
             initial_nodes = pd.read_csv(nadir + '/initial_nodes.csv')
             gazd = pd.DataFrame(grid_array_z, columns=(['A0', 'A1', 'A2']))

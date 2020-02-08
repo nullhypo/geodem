@@ -3,10 +3,11 @@ from setup import *
 
 class Axis:
 
-    # class attributes
     oadir = path + '/data/spines/oa11'  # oa spine path
 
     def __init__(self, project_id):
+        """Explore covariance of features in z-space, build 3 orthongonal axes in z(log odds)-space using PCA
+        and assess discriminatory power"""
 
         self.project_id = project_id
 
@@ -16,6 +17,8 @@ class Axis:
         mdir = path + '/data/metadata/' + self.project_id  # feature categorisation metadata file
         fdir = path + '/data/features_scatter/' + self.project_id
         dodir = path + '/data/discrimination_features/' + self.project_id  # discrimination features output path
+
+        pp = PdfPages(fdir + '/features_scatter.pdf')  # open model_outputs pdf for writing
 
         md = pd.read_csv(mdir + '/feature_categorisation.csv')  # read in feature categorisation metadata file
         md = md[md['discrimination_feature'] != 1]
@@ -33,12 +36,12 @@ class Axis:
         oa11 = pd.DataFrame(grid['oa11'], columns=['oa11'])
         grid.drop(columns=['oa11'], inplace=True)
 
+        # normalise as z
         gridc = np.array(grid)
         grid_array_z_c = ss.zscore(gridc)
         grid_array_z_c = grid_array_z_c[np.random.randint(grid_array_z_c.shape[0], size=1000), :]
 
-        pp = PdfPages(fdir + '/features_scatter.pdf')  # open model_outputs pdf for writing
-
+        # AXIS BUILDS
         fln = len(features_set)
         for i in range(0, fln):
             for j in range(0, fln):
@@ -49,11 +52,12 @@ class Axis:
                     plt.xlabel(features_set[i])
                     plt.ylabel(features_set[j])
                     plt.title('Features scatter')
+                    # TODO: why not produce a correlation matrix here
                     pp.savefig()
 
         pp.close()
 
-        pp = PdfPages(ahdir + '/axis_histograms.pdf')  # open model_outputs pdf for writing
+        pp = PdfPages(ahdir + '/axis.pdf')  # open model_outputs pdf for writing
 
         # PCA
         def PCA_analysis(grid, axis, feature_count):
@@ -63,7 +67,7 @@ class Axis:
             # get primary eigenvector of covariance matrix
             pca.fit(grid)
             v1 = pca.components_
-            # project features space onto the primary eigenvector
+            # project features in z space onto the primary eigenvector
             PC['pcDataPoint'] = pca.transform(grid)
 
         # histogram
@@ -119,15 +123,8 @@ class Axis:
             # histogram axis
             hist(i, source)
 
-
-
-
-
-
-
-
-
-
+        # MEASURE DISCRIMINATION
+        # TODO: over-engineered, but I was in a hurry! Maybe this can make use of existing packages
         # plot gains curves
         for axfile in os.listdir(adir):
             for file in os.listdir(dodir):
@@ -178,12 +175,12 @@ class Axis:
 
                     ax1.plot(gini_grid_feature_gains.iloc[:, [4]], gini_grid_feature_gains.iloc[:, [2]])
 
-                    colormap = plt.cm.gist_ncar  # nipy_spectral, Set1,Paired
+                    colormap = plt.cm.gist_ncar
                 colors = [colormap(i) for i in np.linspace(0, 1, len(ax1.lines))]
                 for i, j in enumerate(ax1.lines):
                     j.set_color(colors[i])
 
-                plt.title("""project_id = """ + project_id + """ """ + input_feature + """ income gains curves""",
+                plt.title("""project_id = """ + project_id + """ """ + input_feature + """ gains curves""",
                           fontsize=8)
                 plt.xlabel('cluster rank')
                 plt.ylabel('cumulatiuve frequency')
@@ -192,18 +189,16 @@ class Axis:
                 pp.savefig()
                 plt.show()
 
-                # income gini
+                # gini
                 # group headers
                 gini_list = []
                 grouping = list(gini_grid_feature)
                 del grouping[0]
                 # volumne by cluster
-
                 vols = (axis.groupby(['initialCluster']).agg({'initialCluster': ['count']})).reset_index()
                 vols.columns = ["_".join(x) for x in vols.columns.ravel()]
                 vols['volume'] = vols['initialCluster_count']
                 vols['initialCluster'] = vols['initialCluster_']
-                print(vols)
 
                 for j in range(1, ng + 1):
                     gini_grid_working = gini_grid_feature.iloc[:, [0, j]]
@@ -227,12 +222,12 @@ class Axis:
                 grouping = pd.DataFrame(grouping, columns=['gini'])
                 gini_output = pd.merge(grouping, gini_list, left_index=True, right_index=True)
                 plt.barh(gini_output['gini'], gini_output[input_feature + '_grouping'], color="blue")
-                plt.title("""project_id = """ + project_id + """gini by """ + input_feature + """ income group""",
+                plt.title("""project_id = """ + project_id + """gini by """ + input_feature + """ group""",
                           fontsize=8)
                 plt.xlabel('gini')
                 plt.ylabel(input_feature + ' group')
                 pp.savefig()
                 plt.show()
 
-        #close model outputs pdf
+        # close model outputs pdf
         pp.close()

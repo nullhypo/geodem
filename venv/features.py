@@ -7,6 +7,8 @@ class Features:
     oadir = path + '/data/spines/oa11'
 
     def __init__(self, project_id):
+        """Derive log-odds of a specified point in the cumulative distribution of each input feature. Also output
+        distribution of features that will be used for discrimination"""
 
         self.project_id = project_id
 
@@ -32,13 +34,12 @@ class Features:
 
         def features(feature, input_feature):
 
-            print(input_feature)
             df = pd.read_csv(idir + '/' + str(input_feature) + '_cleaned.csv')  # read in feature input file
             df = pd.merge(df, oa, how='inner', left_on=['oa11'], right_on=['oa11'])  # join feature input file to oa spine
-            #df = df.head(1000)  # for dev
             mdi = md[md['feature'] == feature]
             df = pd.merge(df, mdi, how='inner', left_on=['level'], right_on=['level'])  # join feature input file to metadata
 
+            # if the feature is not being used for measuring discrimination
             discrim_flag = df['discrimination_feature'].unique()[0]
             if discrim_flag != 1:
 
@@ -70,6 +71,7 @@ class Features:
                 plt.ylabel('frequency')
                 pp.savefig()
 
+            # if the features if being used to measure discrimination
             else:
                 dfd = df.copy()
                 dfd = dfd[['oa11', 'order', 'metric']]
